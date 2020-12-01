@@ -26,6 +26,7 @@ BASE_DOMAIN=${CRC_BASE_DOMAIN:-testing}
 CRC_PV_DIR="/mnt/pv-data"
 SSH="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i id_rsa_crc"
 MIRROR=${MIRROR:-https://mirror.openshift.com/pub/openshift-v4/$ARCH/clients/ocp}
+CERT_ROTATION=${CERT_ROTATION:-true}
 
 # If user defined the OPENSHIFT_VERSION environment variable then use it.
 # Otherwise use the tagged version if available
@@ -290,7 +291,10 @@ fi
 ${UNZIP} -o -d openshift-clients/windows/ openshift-clients/windows/oc.zip
 OC=./openshift-clients/linux/oc
 
-run_preflight_checks
+if [[ ${CERT_ROTATION} == "true" ]]
+then
+    run_preflight_checks
+fi
 
 if [ -z "${OPENSHIFT_PULL_SECRET_PATH-}" ]; then
     echo "OpenShift pull secret file path must be specified through the OPENSHIFT_PULL_SECRET_PATH environment variable"
@@ -356,9 +360,13 @@ EOF
 # Reload the NetworkManager to make DNS overlay effective
 sudo systemctl reload NetworkManager
 
-# Disable the network time sync and set the clock to past (for a day) on host
-sudo timedatectl set-ntp off
-sudo date -s '-1 day'
+
+if [[ ${CERT_ROTATION} == "true" ]]
+then
+    # Disable the network time sync and set the clock to past (for a day) on host
+    sudo timedatectl set-ntp off
+    sudo date -s '-1 day'
+fi
 
 # Create the INSTALL_DIR for the installer and copy the install-config
 rm -fr ${INSTALL_DIR} && mkdir ${INSTALL_DIR} && cp install-config.yaml ${INSTALL_DIR}
